@@ -65,7 +65,7 @@ class Markdown(object):
                 self.output = str(doc_root.joinpath(output.replace('.', '/') + '.md'))
                 if os.path.dirname(self.output) != '':
                     os.makedirs(os.path.dirname(self.output), exist_ok=True)
-                self.w = open(self.output, 'w')
+                self.w = open(self.output, 'w', encoding='utf=8')
             kwds.setdefault('layout', 'page')
             kwds.setdefault('title', output or '???')
             self.markdown(
