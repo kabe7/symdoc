@@ -30,7 +30,7 @@ def NewtonRaphson(関数, x, *args):
     F = sp.Function('F')
     NR = x - F(x) / sp.diff(F(x),x)
 
-    itr_equation = NR.subs(F(x),関数).doit()
+    itr_equation = sp.simplify(NR.subs(F(x),関数).doit())
     itr_func = sp.lambdify((x,*args), itr_equation)
 
     func = sp.lambdify((x, *args), 関数)

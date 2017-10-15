@@ -16,17 +16,17 @@
 <p><em>Newton-Raphson法</em>によれば、適当な初期値<span class="math inline">\(x_0\)</span>から <span class="math display">\[x_{n+1} = x_{n} - \frac{F{\left (x_{n} \right )}}{\frac{d}{d x_{n}} F{\left (x_{n} \right )}}\]</span> により反復列を作ると、<span class="math inline">\(F(x)=0\)</span>の解 <span class="math inline">\(\alpha\)</span> に収束する数列となる。 これを利用して、解<span class="math inline">\(\alpha\)</span>を近似的に求めることができる。</p>
 <h2 id="a-x20の近似解の導出"><span class="math inline">\(- a + x^{2}=0\)</span>の近似解の導出</h2>
 <p>Newton-Raphson法を基に、<span class="math inline">\(- a + x^{2}=0\)</span>の解に収束する反復列を作ると次のようになる。</p>
-<p><span class="math display">\[x_{n+1} = x_{n} - \frac{- a + x_{n}^{2}}{2 x_{n}}\]</span></p>
-<p><span class="math inline">\(a=2\)</span>として、初期値<span class="math inline">\(x_0 = 1\)</span>から反復を5回行うと近似解として次を得る。 <span class="math display">\[\alpha \approx x_{5} = 1.4142135623730951\]</span></p>
+<p><span class="math display">\[x_{n+1} = \frac{a + x_{n}^{2}}{2 x_{n}}\]</span></p>
+<p><span class="math inline">\(a=2\)</span>として、初期値<span class="math inline">\(x_0 = 1\)</span>から反復を5回行うと近似解として次を得る。 <span class="math display">\[\alpha \approx x_{5} = 1.414213562373095\]</span></p>
 <p><span class="math inline">\(a=3\)</span>として、初期値<span class="math inline">\(x_0 = 100\)</span>から反復を10回行うと近似解として次を得る。 <span class="math display">\[\alpha \approx x_{10} = 1.7320508075688787\]</span></p>
 <h2 id="a-x30の近似解の導出"><span class="math inline">\(- a + x^{3}=0\)</span>の近似解の導出</h2>
 <p>Newton-Raphson法を基に、<span class="math inline">\(- a + x^{3}=0\)</span>の解に収束する反復列を作ると次のようになる。</p>
-<p><span class="math display">\[x_{n+1} = x_{n} - \frac{- a + x_{n}^{3}}{3 x_{n}^{2}}\]</span></p>
-<p><span class="math inline">\(a=4\)</span>として、初期値<span class="math inline">\(x_0 = 1\)</span>から反復を5回行うと近似解として次を得る。 <span class="math display">\[\alpha \approx x_{5} = 1.5874010520152708\]</span></p>
+<p><span class="math display">\[x_{n+1} = \frac{a + 2 x_{n}^{3}}{3 x_{n}^{2}}\]</span></p>
+<p><span class="math inline">\(a=4\)</span>として、初期値<span class="math inline">\(x_0 = 1\)</span>から反復を5回行うと近似解として次を得る。 <span class="math display">\[\alpha \approx x_{5} = 1.587401052015271\]</span></p>
 <p><span class="math inline">\(a=10\)</span>として、初期値<span class="math inline">\(x_0 = 1\)</span>から反復を10回行うと近似解として次を得る。 <span class="math display">\[\alpha \approx x_{10} = 2.154434690031884\]</span></p>
 <h2 id="fracxtanleft-x-right---frac1a0の近似解の導出"><span class="math inline">\(\frac{x}{\tan{\left (x \right )}} - \frac{1}{a}=0\)</span>の近似解の導出</h2>
 <p>Newton-Raphson法を基に、<span class="math inline">\(\frac{x}{\tan{\left (x \right )}} - \frac{1}{a}=0\)</span>の解に収束する反復列を作ると次のようになる。</p>
-<p><span class="math display">\[x_{n+1} = x_{n} - \frac{\frac{x_{n}}{\tan{\left (x_{n} \right )}} - \frac{1}{a}}{\frac{x_{n} \left(- \tan^{2}{\left (x_{n} \right )} - 1\right)}{\tan^{2}{\left (x_{n} \right )}} + \frac{1}{\tan{\left (x_{n} \right )}}}\]</span></p>
+<p><span class="math display">\[x_{n+1} = \frac{2 a x_{n}^{2} + \cos{\left (2 x_{n} \right )} - 1}{a \left(2 x_{n} - \sin{\left (2 x_{n} \right )}\right)}\]</span></p>
 <p><span class="math inline">\(a=1\)</span>として、初期値<span class="math inline">\(x_0 = 5\)</span>から反復を100回行うと近似解として次を得る。 <span class="math display">\[\alpha \approx x_{100} = 4.493409457909064\]</span></p>
 </body>
 </html>
