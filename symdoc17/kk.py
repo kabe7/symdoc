@@ -19,12 +19,8 @@ import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
 import numpy.linalg as la
-import math
 from scipy.optimize import minimize
 from functools import partial
-
-
-sp.var('x a n')
 
 ######################################################################
 # ユーティリティ関数
@@ -75,7 +71,7 @@ def findBiggestPotentialIndex(jacobian,pos):
     return max_idx, delta_max
 
 #################################
-def _kamada_kawai_(Pos,SpCons,Len,eps):
+def kamada_kawai(Pos,SpCons,Len,eps):
     nodes,dim = Pos.shape
     const = (SpCons,Len)
     P = sp.IndexedBase('P')
@@ -158,7 +154,7 @@ def test0():
     P=np.array(P,dtype=object)
     X_before=P.T[0].copy()
     Y_before=P.T[1].copy()
-    P = _kamada_kawai_(P,K,L,eps)
+    P = kamada_kawai(P,K,L,eps)
     print(P)
 
     X_after=P.T[0]
@@ -183,7 +179,7 @@ def test1():
     P=np.array(P,dtype=object)
     X_before=P.T[0].copy()
     Y_before=P.T[1].copy()
-    P = _kamada_kawai_(P,K,L,eps)
+    P = kamada_kawai(P,K,L,eps)
     print(P)
 
     X_after=P.T[0]
