@@ -2,7 +2,6 @@ import argparse
 import sys
 import typing
 
-
 from symdoc import Markdown, doit, symfunc, gsym
 
 cmdline_parser = argparse.ArgumentParser()
@@ -21,6 +20,7 @@ import matplotlib.pyplot as plt
 import numpy.linalg as la
 from scipy.optimize import minimize
 from functools import partial
+import time
 
 ######################################################################
 # ユーティリティ関数
@@ -38,7 +38,6 @@ def convertToMatrix(nodeList,adj_list):
                     adj_matrix[i][k] = 1
 
     return adj_matrix
-
 
 def warshall_floyd(adj_matrix:np.ndarray):
     n = adj_matrix.shape[0]
@@ -138,6 +137,60 @@ def kamada_kawai(Pos,SpCons,Len,eps):
 
     return Pos
 
+def kk_ver2(Pos,SpCons,Len,eps):
+    nodes,dim = Pos.shape
+    const = (SpCons,Len)
+    P = sp.IndexedBase('P')
+    K = sp.IndexedBase('K')
+    L = sp.IndexedBase('L')
+    X = sp.IndexedBase('X')
+
+    i,j,d = [sp.Idx(*spec) for spec in [('i',nodes),('j',nodes),('d',dim)]]
+    i_range,j_range,d_range = [(idx,idx.lower,idx.upper) for idx in [i,j,d]]
+
+    #potential functionの用意
+    print('reserving Potential function')
+    start = time.time()
+    dist = sp.sqrt(sp.Sum((P[i,d]-P[j,d])**2,d_range)).doit()
+    E = sp.Sum(K[i,j] * (dist-L[i,j])**2,i_range,j_range)
+    end = time.time()
+    print('[time:',end-start,'s]')
+
+    #jacobian,Hessianの用意
+    print('reserving jacobian and hessian')
+    start = time.time()
+    variables = [P[i,d] for i in range(nodes) for d in range(dim)]
+    E = E.doit()
+    E_jac = sp.Matrix([E]).jacobian(variables)
+    E_hes = sp.hessian(E,variables)
+    end = time.time()
+    print('[time:',end-start,'s]')
+
+
+    print('generating derivative equation')
+    start = time.time()
+    PX = np.array([X[i*dim+j] for i in range(nodes) for j in range(dim)]).reshape(nodes,dim)
+    E_X,E_jac_X,E_hes_X = [f.replace(K,SpCons).replace(L,Len).replace(P,PX) for f in [E, E_jac, E_hes]]
+    #E_X,E_jac_X,E_hes_X = [sp.simplify(f.replace(K,SpCons).replace(L,Len).replace(P,PX)) for f in [E, E_jac, E_hes]]
+    end = time.time()
+    print('[time:',end-start,'s]')
+
+    print('generating derivative function')
+    start = time.time()
+    F,G,H = [sp.lambdify(X,f) for f in [E_X,E_jac_X,E_hes_X]]
+    end = time.time()
+    print('[time:',end-start,'s]')
+
+    print('fitting')
+    start = time.time()
+    res = minimize(F, Pos, jac=lambda x: np.array([G(x)]).flatten(), hess = H, method='trust-ncg')
+    end = time.time()
+    print('[time:',end-start,'s]')
+
+    print(res)
+
+    return res.x.reshape(nodes,dim)
+
 #####################################
 def test0():
     testData = ([0,1,2,3],[[1,2],[0,2],[0,2,3],[2]])
@@ -154,7 +207,7 @@ def test0():
     P=np.array(P,dtype=object)
     X_before=P.T[0].copy()
     Y_before=P.T[1].copy()
-    P = kamada_kawai(P,K,L,eps)
+    P = kk_ver2(P,K,L,eps)
     print(P)
 
     X_after=P.T[0]
@@ -179,7 +232,7 @@ def test1():
     P=np.array(P,dtype=object)
     X_before=P.T[0].copy()
     Y_before=P.T[1].copy()
-    P = kamada_kawai(P,K,L,eps)
+    P = kk_ver2(P,K,L,eps)
     print(P)
 
     X_after=P.T[0]
