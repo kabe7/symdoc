@@ -69,6 +69,17 @@ def findBiggestPotentialIndex(jacobian,pos):
 
     return max_idx, delta_max
 
+def draw_2Dgraph(adj_matrix,pos):
+    n,dim = pos.shape
+    for i in range(n-1):
+        for j in range(i,n):
+            if(adj_matrix[i,j] == 1):
+                plt.plot([pos[i,0],pos[j,0]],[pos[i,1],pos[j,1]], 'k-')
+
+    plt.plot(pos.T[0],pos.T[1],'bo')
+    plt.axes().set_aspect('equal', 'datalim')
+    plt.show()
+
 #################################
 def kamada_kawai(Pos,SpCons,Len,eps):
     nodes,dim = Pos.shape
@@ -138,6 +149,7 @@ def kamada_kawai(Pos,SpCons,Len,eps):
     return Pos
 
 def kk_ver2(Pos,SpCons,Len,eps):
+    t_start = time.time()
     nodes,dim = Pos.shape
     const = (SpCons,Len)
     P = sp.IndexedBase('P')
@@ -159,19 +171,21 @@ def kk_ver2(Pos,SpCons,Len,eps):
     #jacobian,Hessianの用意
     print('reserving jacobian and hessian')
     start = time.time()
-    variables = [P[i,d] for i in range(nodes) for d in range(dim)]
-    E = E.doit()
-    E_jac = sp.Matrix([E]).jacobian(variables)
-    E_hes = sp.hessian(E,variables)
+    varP = [P[i,d] for i in range(nodes) for d in range(dim)]
+    E_jac = sp.Matrix([E]).jacobian(varP)
+    E_hes = sp.hessian(E,varP)
     end = time.time()
     print('[time:',end-start,'s]')
 
 
     print('generating derivative equation')
+    varX = [X[i] for i in range(nodes*dim)]
     start = time.time()
     PX = np.array([X[i*dim+j] for i in range(nodes) for j in range(dim)]).reshape(nodes,dim)
-    E_X,E_jac_X,E_hes_X = [f.replace(K,SpCons).replace(L,Len).replace(P,PX) for f in [E, E_jac, E_hes]]
-    #E_X,E_jac_X,E_hes_X = [sp.simplify(f.replace(K,SpCons).replace(L,Len).replace(P,PX)) for f in [E, E_jac, E_hes]]
+
+    E_X = E.replace(K,SpCons).replace(L,Len).replace(P,PX).doit()
+    E_jac_X = sp.Matrix([E_X]).jacobian(varX)
+    E_hes_X = sp.hessian(E_X,varX)
     end = time.time()
     print('[time:',end-start,'s]')
 
@@ -187,56 +201,36 @@ def kk_ver2(Pos,SpCons,Len,eps):
     end = time.time()
     print('[time:',end-start,'s]')
 
-    print(res)
-
+    print('[time:',time.time()-t_start,'s]')
     return res.x.reshape(nodes,dim)
 
-#####################################
-def test0():
-    testData = ([0,1,2,3],[[1,2],[0,2],[0,2,3],[2]])
-    L0,K0 = 10,10
-    eps = 0.001
-    dim = 2
 
-    n = len(testData[0])
-    d = warshall_floyd(convertToMatrix(testData[0],testData[1]))
-    P = np.random.rand(n*dim).reshape(n,dim)
+#####################################
+
+def initial_setting(nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
+    n = len(nodeList)
+    adj = convertToMatrix(nodeList,consList)
+    d = warshall_floyd(adj)
+
+    P = np.array(np.random.rand(n*dim).reshape(n,dim),dtype=object)
     L = L0 * d * (-np.eye(n)+np.ones([n,n]))
     K = K0 * d**(-2) * (-np.eye(n)+np.ones([n,n]))
 
-    P=np.array(P,dtype=object)
-    X_before=P.T[0].copy()
-    Y_before=P.T[1].copy()
     P = kk_ver2(P,K,L,eps)
-    print(P)
 
-    X_after=P.T[0]
-    Y_after=P.T[1]
-    plt.scatter(X_before,Y_before,c="blue")
-    plt.scatter(X_after,Y_after,c="red")
-    plt.show()
+    if(dim==2):
+        draw_2Dgraph(adj,P)
+    else:
+        print(P)
+
+
+#####################################
+triangle = ([0,1,2,3],[[1,2],[0,2],[0,2,3],[2]])
+double_triangle = ([0,1,2,3,4,5],[[2,3],[4,5],[0,3,5],[0,2],[1,5],[1,2,4]])
+cube = ([0,1,2,3,4,5,6,7],[[1,3,4],[0,2,5],[1,3,6],[0,2,7],[0,5,7],[1,4,6],[2,5,7],[3,4,6]])
+octahedron = ([0,1,2,3,4,5],[[1,2,3,4],[0,2,4,5],[0,1,3,5],[0,2,4,5],[0,1,3,5],[1,2,3,4]])
+octagon_x = ([0,1,2,3,4,5,6,7],[[1,4,7],[0,2],[1,3,6],[2,4],[0,3,5],[4,6],[2,5,7],[0,6]])
 
 @doit
-def test1():
-    testData = ([0,1,2,3,4,5],[[2,3],[4,5],[0,3,5],[0,2],[1,5],[1,2,4]])
-    L0,K0 = 10,10
-    eps = 0.01
-    dim = 2
-
-    n = len(testData[0])
-    d = warshall_floyd(convertToMatrix(testData[0],testData[1]))
-    P = np.array([[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]])
-    L = L0 * d * (-np.eye(n)+np.ones([n,n]))
-    K = K0 * d**(-2) * (-np.eye(n)+np.ones([n,n]))
-
-    P=np.array(P,dtype=object)
-    X_before=P.T[0].copy()
-    Y_before=P.T[1].copy()
-    P = kk_ver2(P,K,L,eps)
-    print(P)
-
-    X_after=P.T[0]
-    Y_after=P.T[1]
-    plt.scatter(X_before,Y_before,c="blue")
-    plt.scatter(X_after,Y_after,c="red")
-    plt.show()
+def test():
+    initial_setting(*cube)
