@@ -1,8 +1,10 @@
-all: t3d.html nr_sqrt.html
+all: kk.html
 
 clean:
-	rm t3d.md t3d.html nr_sqrt.md nr_sqrt.html
+	rm t3d.md t3d.html nr_sqrt.md nr_sqrt.html kk.md kk.html
 	rm -rf __pycache__
+	rm -rf pics
+	mkdir pics
 
 t3d.html: t3d.py
 	python t3d.py --symdoc
@@ -11,3 +13,7 @@ t3d.html: t3d.py
 nr_sqrt.html: nr_sqrt.py
 	python nr_sqrt.py --symdoc
 	pandoc -t html -o nr_sqrt.html --standalone --mathjax nr_sqrt.md
+
+kk.html: kk.py
+	python kk.py --symdoc
+	pandoc -t html -o kk.html --standalone --mathjax kk.md

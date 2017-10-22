@@ -25,7 +25,6 @@ sp.var('x a n')
 # ユーティリティ関数
 
 def NewtonRaphson(関数, x, *args):
-    ''
     x_n,x_n1 = sp.var('x_n x_{n+1}')
     F = sp.Function('F')
     NR = x - F(x) / sp.diff(F(x),x)
