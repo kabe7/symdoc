@@ -1,10 +1,10 @@
 all: kk.html
 
 clean:
-	rm t3d.md t3d.html nr_sqrt.md nr_sqrt.html kk.md kk.html
 	rm -rf __pycache__
 	rm -rf pics
 	mkdir pics
+	rm t3d.md t3d.html nr_sqrt.md nr_sqrt.html kk.md kk.html
 
 t3d.html: t3d.py
 	python t3d.py --symdoc

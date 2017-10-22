@@ -162,11 +162,19 @@ def setting(name,nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
     adj = convertToMatrix(nodeList,consList)
     D = warshall_floyd(adj)
 
-    P = np.array(L0*np.random.rand(n*dim).reshape(n,dim),dtype=object)
+    if(dim==2):
+        P = np.array(np.zeros((n,dim)),dtype=object)
+        for m in range(n):
+            P[m,0] = np.cos(2*np.pi/n*m)
+            P[m,1] = np.sin(2*np.pi/n*m)
+    else:
+        P = np.array(L0*np.random.rand(n*dim).reshape(n,dim),dtype=object)
+
     L = L0 * D * (-np.eye(n)+np.ones([n,n]))
     K = K0 * D**(-2) * (-np.eye(n)+np.ones([n,n]))
 
     P = kk_ver1(P,K,L)
+    #P = kk_ver2(P,K,L)
 
     if(dim==2):
         draw_2Dgraph(adj,P,name)
