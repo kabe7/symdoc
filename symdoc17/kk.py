@@ -39,7 +39,7 @@ def convertToMatrix(nodeList,adj_list):
 
     return adj_matrix
 
-def warshall_floyd(adj_matrix:np.ndarray):
+def warshall_floyd(adj_matrix):
     n = adj_matrix.shape[0]
     # generate distance_matrix
     distance_matrix = -n*adj_matrix + n+1
@@ -58,19 +58,19 @@ def draw_2Dgraph(adj_matrix,pos,name='sample'):
     for i in range(n-1):
         for j in range(i,n):
             if(adj_matrix[i,j] == 1):
-                plt.plot([pos[i,0],pos[j,0]],[pos[i,1],pos[j,1]], 'k-')
+                plt.plot([pos[i,0],pos[j,0]],[pos[i,1],pos[j,1]],'k-')
 
     plt.plot(pos.T[0],pos.T[1],'bo')
+    plt.title(name)
     plt.axes().set_aspect('equal', 'datalim')
     plt.savefig(figname)
-    plt.show()
-
+    plt.clf()
+    #plt.show()
 
 #################################
 def kk_ver1(Pos,SpCons,Len,eps=0.001):
-    '関数リスト'
+    '関数リストを用いた部分最適化'
     t_start = time()
-    print('start')
     nodes,dim = Pos.shape
     const = (SpCons,Len)
     P = sp.IndexedBase('P')
@@ -84,18 +84,16 @@ def kk_ver1(Pos,SpCons,Len,eps=0.001):
     Potential = 1/2* K[i,j] * (dist-L[i,j])**2
     E = sp.Sum(Potential,i_range,j_range).doit()
 
-    #list of equations,functions
+    #list of functions
     E_jac, E_hess = [],[]
     for m in range(nodes):
         variables = [P[m,d] for d in range(dim)]
         mth_jac, mth_hess = [partial(sp.lambdify((K,L,P),f,dummify = False),*const) for f in [sp.Matrix([E]).jacobian(variables),sp.hessian(E,variables)]]
         E_jac.append(mth_jac)
         E_hess.append(mth_hess)
-    print('generate function:',time()-t_start,'s')
+    print('derivative functions are generated:',time()-t_start,'s')
 
-    print('Fitting start')
-
-    ##最適化部分
+    ##Optimisation
     delta_max = sp.oo
     while(delta_max>eps):
         max_idx, delta_max = 0, 0
@@ -108,8 +106,9 @@ def kk_ver1(Pos,SpCons,Len,eps=0.001):
 
         jac = E_jac[max_idx]
         hess = E_hess[max_idx]
-        delta_x = la.solve(hess(Pos),jac(Pos).flatten())
-        Pos[max_idx] -= delta_x
+        while(la.norm(jac(Pos))>eps):
+            delta_x = la.solve(hess(Pos),jac(Pos).flatten())
+            Pos[max_idx] -= delta_x
 
     print('Fitting Succeeded')
     print('Finish:',time()-t_start,'s')
@@ -157,7 +156,7 @@ def kk_ver2(Pos,SpCons,Len):
     return res.x.reshape(nodes,dim)
 
 #####################################
-def setting(name,nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
+def kamada_kawai(name,nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
     n = len(nodeList)
     adj = convertToMatrix(nodeList,consList)
     D = warshall_floyd(adj)
@@ -165,19 +164,23 @@ def setting(name,nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
     if(dim==2):
         P = np.array(np.zeros((n,dim)),dtype=object)
         for m in range(n):
-            P[m,0] = np.cos(2*np.pi/n*m)
-            P[m,1] = np.sin(2*np.pi/n*m)
+            P[m,0] = L0*np.cos(2*np.pi/n*m)
+            P[m,1] = L0*np.sin(2*np.pi/n*m)
     else:
         P = np.array(L0*np.random.rand(n*dim).reshape(n,dim),dtype=object)
 
     L = L0 * D * (-np.eye(n)+np.ones([n,n]))
     K = K0 * D**(-2) * (-np.eye(n)+np.ones([n,n]))
+    D = D * (-np.eye(n)+np.ones([n,n]))
+    if(dim==2):
+        draw_2Dgraph(adj,P,name+'_before')
 
+    print('Start optimisation:',name)
     P = kk_ver1(P,K,L)
     #P = kk_ver2(P,K,L)
 
     if(dim==2):
-        draw_2Dgraph(adj,P,name)
+        draw_2Dgraph(adj,P,name+'_after')
     else:
         print(P)
 
@@ -189,18 +192,18 @@ r'''
 
 頂点を{nodeList}、隣接する点のリストを{consList}とすると、最短経路行列$D$,ばね定数行列$K$,自然長行列$L$は次のようになる。
 $$D = {D_},K = {K_},L = {L_}$$
-このとき、ランダム生成した座標からkamada-kawai法により頂点位置の最適化を行なうと、頂点座標は次のようになる。
+このとき、円周上に並べた頂点からkamada-kawai法により頂点座標の最適化を行なうと、次のようになる。
 $$P = {P_}$$
 
 プロットした画像は次のようになる。
 
-![img](pics/{name}.png)
+![最適化前](pics/{name}_before.png)
+![最適化後](pics/{name}_after.png)
 
 ''',**locals())
 
 #####################################
-
-def test():
+def testData():
     triangle = ([0,1,2,3],[[1,2],[0,2],[0,2,3],[2]])
     tetrahedron = ([0,1,2,3],[[1,2,3],[0,2,3],[0,1,3],[0,1,2]])
     double_triangle = ([0,1,2,3,4,5],[[2,3],[4,5],[0,3,5],[0,2],[1,5],[1,2,4]])
@@ -210,27 +213,28 @@ def test():
     initial_setting(*cube)
 
 @doit
-def _kamada_kawai_intro_():
-    nodes,dim =3,2
+def _kamada_kawai_intro_(dim=2):
     markdown(
 r'''
 #力学モデルを用いたグラフ描画
 
 グラフを描画する際、頂点の配置をどのようにするかということは視覚的な理解に大きな影響を及ぼす。
 本記事では、グラフの頂点と辺に仮想的な力を割り当て、力学的エネルギーの低い安定状態を探して
-グラフのレイアウトを求める*kamada-kawai*法を用いる。
+グラフのレイアウトを求める**kamada-kawai**法を用いる。
 ''')
 
     P = sp.IndexedBase('P')
     K = sp.IndexedBase('k')
     L = sp.IndexedBase('l')
 
-    i,j,d = [sp.Idx(*spec) for spec in [('i',nodes),('j',nodes),('d',dim)]]
+    n = sp.Symbol('n', integer=True)
+
+    i,j,d = [sp.Idx(*spec) for spec in [('i',n),('j',n),('d',dim)]]
     i_range,j_range,d_range = [(idx,idx.lower,idx.upper) for idx in [i,j,d]]
 
     #potential functionの用意
     dist = sp.sqrt(sp.Sum((P[i,d]-P[j,d])**2,d_range)).doit()
-    Potential = K[i,j]/2 * (dist-L[i,j])**2
+    Potential = K[i,j] * (dist-L[i,j])**2/2
     E = sp.Sum(Potential,i_range,j_range)/2
 
     P_id,k_ij,l_ij,d_ij = ['P_{i,d}','k_{i,j}','l_{i,j}','d_{i,j}']
@@ -246,40 +250,63 @@ $$E = {E}$$
 ${k_ij},{l_ij}$は、${d_ij}$を頂点$i$と頂点$j$を結ぶ最短経路の長さとして
 $${k_ij} = K / {d_ij}^2 (i \neq j) \ \  0(i = j)$$
 $${l_ij} = L \times {d_ij}$$
-で定める。($K,L$は定数)
-${d_ij}$は*Warshall-Floyd*のアルゴリズムにより求めることができる。
+で定める($K,L$は定数)。
+
+${d_ij}$は**Warshall-Floyd**のアルゴリズムにより求めることができる。
 ''',**locals())
 
-    nd = nodes*dim
-    P_m = sp.var('P_m')
+    nd = n*dim
     _E = sp.Function('E')
-    dEdPm = sp.diff(_E(P_m),P_m)
-    E = E.doit()
-    var1 = [P[1,d] for d in range(dim)]
-    E_jac_1 = sp.simplify(sp.Matrix([E]).jacobian(var1))
-    E_hess_1 = sp.hessian(E,var1) #simplifyするのにすごい時間がかかる
+
+    x = sp.IndexedBase('x')
+    i0 = sp.Idx('i',(1,n))
+    i0_range = (i0,i0.lower,i0.upper)
+    var0 = [x[d] for d in range(dim)]
+    var0_m = sp.Matrix([var0])
+    dist0 = sp.sqrt(sp.Sum((P[i0,d]-x[d])**2,d_range)).doit()
+    E0 = sp.Sum(K[i0,0] * (dist0-L[i0,0])**2/2,i0_range)
+    E0_jac = sp.simplify(sp.Matrix([E0]).jacobian(var0))
+    E0_hess = sp.simplify(sp.hessian(E0,var0))
+
+    delta_x = sp.IndexedBase("\Delta x")
+    delta_x_vec = sp.Matrix([[delta_x[d] for d in range(dim)]])
+    norm = sp.sqrt(sp.Sum(sp.diff(_E(P[i,d]),P[i,d])**2,d_range).doit())
+
     markdown(
 r'''
 ##エネルギーの最小化
 
-例として、頂点数が{nodes},次元が{dim}であるときを考える。
-力学的エネルギーが最小になる点では、$gradE = \vec 0$が成り立つ。
-すなわち、${nd}$本の非線型連立方程式を解けばよいのだが、これを解析的に解くのは難しい。
-そこで、Newton-Raphson法を用いて近似解を求める。
+例として、頂点数が{n},次元が{dim}であるときを考える。
+力学的エネルギーが最小になる点では、$gradE = \vec 0$が成り立つ。すなわち、変数が${nd}$個ある${nd}$本の非線型連立方程式を解けばよいのだが、これを解析的に解くのは難しい。
+そこで、次のような方法で近似解を求める。
+
+1:まず、特定の頂点1つに着目し、他の頂点の位置を固定する。
+
+2:そして、Newton-Raphson法により選んだ頂点の座標について力学的エネルギー$E$の最小化を行う。
+
+3:着目する頂点を変えて1,2を繰り返す。
+
+4:$\|gradE\|$が十分小さくなったら終了、その時の座標の値を解とする。
+
+以下で、その具体的な方法について述べる。
 
 ##近似解の導出
-まず、$\|{dEdPm}\||$が最大となる添字$i$を探す($P_i$はベクトルであることに注意)。
-このとき、$P_i$の各成分を変数としたときのEのヤコビアンを$J_i$、ヘッシアンを$H_i$として
-$$H_m \Delta P_m = -J_m$$
-により変位$\Delta P_i$を求め、$P_i = P_i + \Delta P_i$により座標を更新する。
-例えば、$i=1$だとすると、$\Delta P_1を求める式は$
-$${E_hess_1}\Delta P_1 = -{E_jac_1.T} $$
-となる。
-以上を繰り返し、$max_i \|{dEdPm}\||$が十分小さくなったら更新を終了して
-その時の座標を力学的エネルギー$E$が最小となる解とする
 
+選んだ頂点をmとし、その座標を$P_m = {var0_m}$とする。
+このときNewton-Raphson法による反復式は、変数を${var0_m}$としたときのEの1次導関数を$J_m$、2次導関数を$H_m$として
+$$H_m {delta_x_vec.T} = -J_m$$
+により表される。
+これは{dim}元連立1次方程式となり容易に解けて変位$\Delta P_i = {delta_x_vec}$が求められるので、$P_i = P_i + \Delta P_i$により座標を更新する。
+以上を繰り返し、変位が十分小さくなったら操作を終了する。
+
+例えば、$m=0$だとすると、反復式は
+$${E0_hess}{delta_x_vec.T} = -{E0_jac.T} $$
+となる。
+
+選んだ頂点の最適化が終わったら、別な頂点を選んで上記の最適化を繰り返す。
+$max_i {norm}$が十分小さくなったら更新を終了してその時の座標を力学的エネルギー$E$が最小となる解とする。
 ''',**locals())
 
 
-setting('double_triangle',[0,1,2,3,4,5],[[2,3],[4,5],[0,3,5],[0,2],[1,5],[1,2,4]])
-setting('cube',[0,1,2,3,4,5,6,7],[[1,3,4],[0,2,5],[1,3,6],[0,2,7],[0,5,7],[1,4,6],[2,5,7],[3,4,6]])
+kamada_kawai('double_triangle',[0,1,2,3,4,5],[[2,3],[4,5],[0,3,5],[0,2],[1,5],[1,2,4]])
+kamada_kawai('cube',[0,1,2,3,4,5,6,7],[[1,3,4],[0,2,5],[1,3,6],[0,2,7],[0,5,7],[1,4,6],[2,5,7],[3,4,6]])
