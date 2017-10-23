@@ -40,13 +40,14 @@ $d_{i,j}$は**Warshall-Floyd**のアルゴリズムにより求めることが�
 
 3:着目する頂点を変えて1,2を繰り返す。
 
-4:$gradE$が十分小さくなったら終了、その時の座標の値を解とする。
+4:$\|gradE\|$が十分小さくなったら終了、その時の座標の値を解とする。
 
 以下で、その具体的な方法について述べる。
 
 ##近似解の導出
 
-選んだ頂点をmとし、その座標を$P_m = \left(\begin{matrix}x_{0} & x_{1}\end{matrix}\right)$とする。
+選んだ頂点をmとし、その座標を$P_m = \left(\begin{matrix}x_{0} & x_{1}\end{matrix}\right)$とする。つまり$\left(\begin{matrix}P_{m,0} & P_{m,1}\end{matrix}\right) = \left(\begin{matrix}x_{0} & x_{1}\end{matrix}\right)$である。
+
 このときNewton-Raphson法による反復式は、変数を$\left(\begin{matrix}x_{0} & x_{1}\end{matrix}\right)$としたときのEの1次導関数を$J_m$、2次導関数を$H_m$として
 $$H_m \left(\begin{matrix}\Delta x_{0}\\\Delta x_{1}\end{matrix}\right) = -J_m$$
 により表される。

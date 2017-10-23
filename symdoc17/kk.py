@@ -268,7 +268,7 @@ ${d_ij}$は**Warshall-Floyd**のアルゴリズムにより求めることがで
 
     var0 = [x[d] for d in range(dim)]
     var0_m = sp.Matrix([var0])
-    var0_Pm = [P[m,d] for d in range(dim)]
+    var0_Pm = sp.Matrix([[P[m,d] for d in range(dim)]])
 
     dist0 = sp.sqrt(sp.Sum((P[i0,d]-x[d])**2,d_range)).doit()
     E0 = sp.Sum(K[i0,0] * (dist0-L[i0,0])**2/2,i0_range)
