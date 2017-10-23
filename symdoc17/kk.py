@@ -60,7 +60,7 @@ def draw_2Dgraph(adj_matrix,pos,name='sample'):
             if(adj_matrix[i,j] == 1):
                 plt.plot([pos[i,0],pos[j,0]],[pos[i,1],pos[j,1]],'k-')
 
-    plt.plot(pos.T[0],pos.T[1],'bo')
+    plt.plot(pos.T[0],pos.T[1],'go')
     plt.title(name)
     plt.axes().set_aspect('equal', 'datalim')
     plt.savefig(figname)
@@ -91,6 +91,9 @@ def kk_ver1(Pos,SpCons,Len,eps=0.001):
         mth_jac, mth_hess = [partial(sp.lambdify((K,L,P),f,dummify = False),*const) for f in [sp.Matrix([E]).jacobian(variables),sp.hessian(E,variables)]]
         E_jac.append(mth_jac)
         E_hess.append(mth_hess)
+        print('generating...',int(m/nodes*100),'%',"\r",end="")
+
+
     print('derivative functions are generated:',time()-t_start,'s')
 
     ##Optimisation
@@ -259,10 +262,14 @@ ${d_ij}$は**Warshall-Floyd**のアルゴリズムにより求めることがで
     _E = sp.Function('E')
 
     x = sp.IndexedBase('x')
+    m = sp.Symbol('m',integer=True)
     i0 = sp.Idx('i',(1,n))
     i0_range = (i0,i0.lower,i0.upper)
+
     var0 = [x[d] for d in range(dim)]
     var0_m = sp.Matrix([var0])
+    var0_Pm = [P[m,d] for d in range(dim)]
+
     dist0 = sp.sqrt(sp.Sum((P[i0,d]-x[d])**2,d_range)).doit()
     E0 = sp.Sum(K[i0,0] * (dist0-L[i0,0])**2/2,i0_range)
     E0_jac = sp.simplify(sp.Matrix([E0]).jacobian(var0))
@@ -292,7 +299,8 @@ r'''
 
 ##近似解の導出
 
-選んだ頂点をmとし、その座標を$P_m = {var0_m}$とする。
+選んだ頂点をmとし、その座標を$P_m = {var0_m}$とする。つまり${var0_Pm} = {var0_m}$である。
+
 このときNewton-Raphson法による反復式は、変数を${var0_m}$としたときのEの1次導関数を$J_m$、2次導関数を$H_m$として
 $$H_m {delta_x_vec.T} = -J_m$$
 により表される。
