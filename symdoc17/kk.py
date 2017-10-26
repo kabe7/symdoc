@@ -67,6 +67,12 @@ def draw_2Dgraph(adj_matrix,pos,name='sample'):
     plt.clf()
     #plt.show()
 
+def xpkl(m,P,K,L,nodes):
+    'kk_ver3の補助関数'
+    x,p = [P[m], np.r_[P[0:m],P[m+1:nodes]]]
+    k,l = [np.r_[M[m,0:m], M[m,m+1:nodes]] for M in [K,L]]
+    return x,p,k,l
+
 #################################
 def kk_ver1(Pos,SpCons,Len,eps=0.001):
     '関数リストを用いた部分最適化'
@@ -98,6 +104,7 @@ def kk_ver1(Pos,SpCons,Len,eps=0.001):
 
     ##Optimisation
     delta_max = sp.oo
+    loops = 0
     while(delta_max>eps):
         max_idx, delta_max = 0, 0
         for m in range(nodes):
@@ -107,6 +114,8 @@ def kk_ver1(Pos,SpCons,Len,eps=0.001):
                 delta_max = delta
                 max_idx = m
 
+        print(loops,'th:',max_idx,' delta=',delta_max)
+        loops += 1
         jac = E_jac[max_idx]
         hess = E_hess[max_idx]
         while(la.norm(jac(Pos))>eps):
@@ -158,6 +167,52 @@ def kk_ver2(Pos,SpCons,Len):
     print('[time:',time()-t_start,'s]')
     return res.x.reshape(nodes,dim)
 
+def kk_ver3(Pos,SpCons,Len,eps=0.001):
+    '頂点の匿名性から微分関数を1つにまとめたもの'
+    t_start = time()
+    nodes,dim = Pos.shape
+    ni = nodes-1
+    X = sp.IndexedBase('X') # 動かす頂点
+    P = sp.IndexedBase('P') # 動かさない頂点
+    Ki = sp.IndexedBase('Ki') # 動かす頂点に関するばね定数
+    Li = sp.IndexedBase('Li') # 動かす頂点に関する自然長
+
+    j,d = [sp.Idx(*spec) for spec in [('j',ni),('d',dim)]]
+    j_range,d_range = [(idx,idx.lower,idx.upper) for idx in [j,d]]
+
+    #potential functionの用意
+    print('reserving Potential function')
+    dist = sp.sqrt(sp.Sum((X[d]-P[j,d])**2,d_range)).doit()
+    Ei = sp.Sum(Ki[j] * (dist-Li[j])**2,j_range)
+
+    #jacobian,Hessianの用意
+    print('reserving jacobian and hessian')
+    varX = [X[d] for d in range(dim)]
+    Ei_jac, Ei_hess = [sp.lambdify((X,P,Ki,Li),sp.simplify(f),dummify = False) for f in [sp.Matrix([Ei]).jacobian(varX), sp.hessian(Ei,varX)]]
+
+    print('fitting')
+
+    ##Optimisation
+    delta_max = sp.oo
+    while(delta_max>eps):
+        # 最も改善すべき頂点の選択
+        max_idx, delta_max = 0, 0
+        for m in range(nodes):
+            x,p,k,l = xpkl(m,Pos,SpCons,Len,nodes)
+            delta = la.norm(Ei_jac(x,p,k,l))
+            if(delta_max < delta):
+                delta_max = delta
+                max_idx = m
+
+        # Newton法で最適化
+        xm,pm,km,lm = xpkl(max_idx,Pos,SpCons,Len,nodes)
+        while(la.norm(Ei_jac(xm,pm,km,lm))>eps):
+            delta_x = la.solve(Ei_hess(xm,pm,km,lm),Ei_jac(xm,pm,km,lm).flatten())
+            xm -= delta_x
+
+    print('Finish:',time()-t_start,'s')
+    return Pos
+
 #####################################
 def kamada_kawai(name,nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
     n = len(nodeList)
@@ -165,22 +220,21 @@ def kamada_kawai(name,nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
     D = warshall_floyd(adj)
 
     if(dim==2):
-        P = np.array(np.zeros((n,dim)),dtype=object)
-        for m in range(n):
-            P[m,0] = L0*np.cos(2*np.pi/n*m)
-            P[m,1] = L0*np.sin(2*np.pi/n*m)
+        a = np.arange(n)
+        P = L0*np.array([np.cos(2*np.pi/n*a),np.sin(2*np.pi/n*a)]).T
     else:
         P = np.array(L0*np.random.rand(n*dim).reshape(n,dim),dtype=object)
 
-    L = L0 * D * (-np.eye(n)+np.ones([n,n]))
     K = K0 * D**(-2) * (-np.eye(n)+np.ones([n,n]))
     D = D * (-np.eye(n)+np.ones([n,n]))
+    L = L0 * D
     if(dim==2):
         draw_2Dgraph(adj,P,name+'_before')
 
     print('Start optimisation:',name)
-    P = kk_ver1(P,K,L)
+    #P = kk_ver1(P,K,L)
     #P = kk_ver2(P,K,L)
+    P = kk_ver3(P,K,L)
 
     if(dim==2):
         draw_2Dgraph(adj,P,name+'_after')
@@ -210,6 +264,7 @@ def testData():
     triangle = ([0,1,2,3],[[1,2],[0,2],[0,2,3],[2]])
     tetrahedron = ([0,1,2,3],[[1,2,3],[0,2,3],[0,1,3],[0,1,2]])
     double_triangle = ([0,1,2,3,4,5],[[2,3],[4,5],[0,3,5],[0,2],[1,5],[1,2,4]])
+    four_triangle = ([0,1,2,3,4,5,6,7,8,9,10,11,12],[[1,4,7,10],[0,2,3],[1,3],[1,2],[0,5,6],[4,6],[4,5],[0,8,9],[7,9],[7,8],[0,11,12],[10,12],[10,11]])
     cube = ([0,1,2,3,4,5,6,7],[[1,3,4],[0,2,5],[1,3,6],[0,2,7],[0,5,7],[1,4,6],[2,5,7],[3,4,6]])
     octahedron = ([0,1,2,3,4,5],[[1,2,3,4],[0,2,4,5],[0,1,3,5],[0,2,4,5],[0,1,3,5],[1,2,3,4]])
     octagon_x = ([0,1,2,3,4,5,6,7],[[1,4,7],[0,2],[1,3,6],[2,4],[0,3,5],[4,6],[2,5,7],[0,6]])
@@ -317,4 +372,4 @@ $max_i {norm}$が十分小さくなったら更新を終了してその時の座
 
 
 kamada_kawai('double_triangle',[0,1,2,3,4,5],[[2,3],[4,5],[0,3,5],[0,2],[1,5],[1,2,4]])
-kamada_kawai('cube',[0,1,2,3,4,5,6,7],[[1,3,4],[0,2,5],[1,3,6],[0,2,7],[0,5,7],[1,4,6],[2,5,7],[3,4,6]])
+kamada_kawai('four_triangle',[0,1,2,3,4,5,6,7,8,9,10,11,12],[[1,4,7,10],[0,2,3],[1,3],[1,2],[0,5,6],[4,6],[4,5],[0,8,9],[7,9],[7,8],[0,11,12],[10,12],[10,11]])
