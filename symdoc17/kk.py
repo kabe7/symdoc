@@ -67,10 +67,10 @@ def draw_2Dgraph(adj_matrix,pos,name='sample'):
     plt.clf()
     #plt.show()
 
-def xpkl(m,P,K,L,nodes):
+def _xpkl(m,P,K,L,n):
     'kk_ver3の補助関数'
-    x,p = [P[m], np.r_[P[0:m],P[m+1:nodes]]]
-    k,l = [np.r_[M[m,0:m], M[m,m+1:nodes]] for M in [K,L]]
+    x,p = [P[m], np.r_[P[0:m],P[m+1:n]]]
+    k,l = [np.r_[M[m,0:m], M[m,m+1:n]] for M in [K,L]]
     return x,p,k,l
 
 #################################
@@ -194,18 +194,14 @@ def kk_ver3(Pos,SpCons,Len,eps=0.001):
 
     ##Optimisation
     delta_max = sp.oo
+    xpkl = partial(_xpkl,P=Pos,K=SpCons,L=Len,n=nodes)
     while(delta_max>eps):
         # 最も改善すべき頂点の選択
-        max_idx, delta_max = 0, 0
-        for m in range(nodes):
-            x,p,k,l = xpkl(m,Pos,SpCons,Len,nodes)
-            delta = la.norm(Ei_jac(x,p,k,l))
-            if(delta_max < delta):
-                delta_max = delta
-                max_idx = m
+        norms = np.array(list(map(lambda m: la.norm(Ei_jac(*xpkl(m))),range(nodes))))
+        max_idx, delta_max = norms.argmax(), norms.max()
 
         # Newton法で最適化
-        xm,pm,km,lm = xpkl(max_idx,Pos,SpCons,Len,nodes)
+        xm,pm,km,lm = xpkl(max_idx)
         while(la.norm(Ei_jac(xm,pm,km,lm))>eps):
             delta_x = la.solve(Ei_hess(xm,pm,km,lm),Ei_jac(xm,pm,km,lm).flatten())
             xm -= delta_x
@@ -223,7 +219,7 @@ def kamada_kawai(name,nodeList,consList,L0=10,K0=10,eps=0.01,dim=2):
         a = np.arange(n)
         P = L0*np.array([np.cos(2*np.pi/n*a),np.sin(2*np.pi/n*a)]).T
     else:
-        P = np.array(L0*np.random.rand(n*dim).reshape(n,dim),dtype=object)
+        P = np.array(L0*np.random.rand(n*dim).reshape(n,dim))
 
     K = K0 * D**(-2) * (-np.eye(n)+np.ones([n,n]))
     D = D * (-np.eye(n)+np.ones([n,n]))
